@@ -1,5 +1,6 @@
 import pygame, math
 from renderer import render
+from object import Object
 
 
 DISPLAY_SIZE = (800, 800)
@@ -31,17 +32,17 @@ def new_obj(x, y, z, w, h, l):
     }
 
 objs = [
-    new_obj(0, 1, 3, 1, 1, 0),
-    new_obj(0, 1, -3, 1, 1, 0),
-    new_obj(3, 1, 0, 0, 1, 1),
-    new_obj(-3, 1, 0, 0, 1, 1),
+    Object(0, 1, 3, 1, 1, 0),
+    Object(0, 1, -3, 1, 1, 0),
+    Object(3, 1, 0, 0, 1, 1),
+    Object(-3, 1, 0, 0, 1, 1),
 ]
 
 if SHOW_FLOOR:
     for i in range(5):
         for j in range(5):
-            objs.append(new_obj(i-2, 0, j-2, 1, 0, 1))
-            objs.append(new_obj(i-2, 2, j-2, 1, 0, 1))
+            objs.append(Object(i-2, 0, j-2, 1, 0, 1))
+            objs.append(Object(i-2, 2, j-2, 1, 0, 1))
 
 
 keys = {

@@ -16,67 +16,47 @@ def screen(p, sw, sh):
     # translates point so that (0, 0) is center
     # currently -1..1, should be 0..w/h
     # -1..1 => 0..2 => 0..1 => 0..w/h
-    return (
-        (p["x"] + 1) / 2 * sw,
-        (p["y"] + 1) / 2 * sh
+    return pygame.Vector2(
+        (p.x + 1) / 2 * sw,
+        (p.y + 1) / 2 * sh
     )
 
 
 def project(p):
     # takes (x, y, z) and turns it into (x', y')
-    return {
-        "x": p["x"] / p["z"],
-        "y": p["y"] / p["z"]
-    }
+    # 3d => 2d
+    return pygame.Vector2(
+        p.x / p.z,
+        p.y / p.z
+    )
 
 
 def get_intersection(p1, p2):
     clip_z = 1
     t = (clip_z - p1[2]) / (p2[2] - p1[2])
-    return {
-        "x": p1[0] + t * (p2[0] - p1[0]),
-        "y": p1[1] + t * (p2[1] - p1[1]),
-        "z": clip_z
-    }
-
-
-def rotate(v: dict, rotation: pygame.Vector3):
-    # y-axis rotation
-    v2 = (
-        v["x"]*math.cos(rotation.y) - v["z"]*math.sin(rotation.y),
-        v["y"],
-        v["x"]*math.sin(rotation.y) + v["z"]*math.cos(rotation.y),
+    return pygame.Vector3(
+        p1[0] + t * (p2[0] - p1[0]),
+        p1[1] + t * (p2[1] - p1[1]),
+        clip_z
     )
 
-    # x-axis rotation
-    return {
-        "x": v2[0],
-        "y": v2[1]*math.cos(rotation.x) - v2[2]*math.sin(rotation.x),
-        "z": v2[1]*math.sin(rotation.x) + v2[2]*math.cos(rotation.x),
-    }
+
+def rotate(v: pygame.Vector3, rotation: pygame.Vector3):
+    v2 = v.rotate_rad(-rotation.y, pygame.Vector3(0, 1, 0))   # y-axis rotation
+    v3 = v2.rotate_rad(rotation.x, pygame.Vector3(1, 0, 0))   # x-axis rotation
+    return v3
 
 
-def translate(v: dict, translation: pygame.Vector3, rotation: pygame.Vector3):
-    return rotate(
-        {
-            "x": v["x"] + translation.x,
-            "y": v["y"] + translation.y,
-            "z": v["z"] + translation.z
-        },
-        rotation
-    )
+def translate(v: pygame.Vector3, translation: pygame.Vector3, rotation: pygame.Vector3):
+    return rotate(v + translation, rotation)
 
 
 
 def render(display_size: tuple, objs: list, col, rotation: dict, position):
     """
-    obj: {
-        "x": x,
-        "y": y,
-        "z": z,
-        "w": width,   (x)
-        "h": height,   (y)
-        "l": length,   (z)
+    Object: {
+        pos: pygame.Vector3(x, y, z),
+        size: pygame.Vector3(w, h, l)
     }
     """
     
@@ -89,18 +69,18 @@ def render(display_size: tuple, objs: list, col, rotation: dict, position):
     for i, obj in enumerate(objs):
         j = i*8
 
-        x, y, z = obj["x"], -(obj["y"] - 1), obj["z"]
-        w, h, l = obj["w"]/2, obj["h"]/2, obj["l"]/2
+        x, y, z = obj.pos.x, -(obj.pos.y - 1), obj.pos.z
+        w, h, l = obj.size.x/2, obj.size.y/2, obj.size.z/2
 
         vs.extend([
-            to_dict(x-w, y+h, z+l),
-            to_dict(x+w, y+h, z+l),
-            to_dict(x+w, y-h, z+l),
-            to_dict(x-w, y-h, z+l),
-            to_dict(x-w, y+h, z-l),
-            to_dict(x+w, y+h, z-l),
-            to_dict(x+w, y-h, z-l),
-            to_dict(x-w, y-h, z-l)
+            pygame.Vector3(x-w, y+h, z+l),
+            pygame.Vector3(x+w, y+h, z+l),
+            pygame.Vector3(x+w, y-h, z+l),
+            pygame.Vector3(x-w, y-h, z+l),
+            pygame.Vector3(x-w, y+h, z-l),
+            pygame.Vector3(x+w, y+h, z-l),
+            pygame.Vector3(x+w, y-h, z-l),
+            pygame.Vector3(x-w, y-h, z-l)
         ])
 
         fs.extend([
@@ -122,13 +102,13 @@ def render(display_size: tuple, objs: list, col, rotation: dict, position):
             p1 = vs[f[i]]
             p2 = vs[f[(i+1)%len(f)]]
 
-            if p1["z"] <= 0 and p2["z"] <= 0:
+            if p1.z <= 0 and p2.z <= 0:
                 continue
             
-            if p1["z"] <= 0 or p2["z"] <= 0:
-                pi = get_intersection((p1["x"], p1["y"], p1["z"]), (p2["x"], p2["y"], p2["z"]))
-                if p1["z"] > 0 and p2["z"] <= 0: p2 = pi
-                if p1["z"] <= 0 and p2["z"] > 0: p1 = pi
+            if p1.z <= 0 or p2.z <= 0:
+                pi = get_intersection((p1.x, p1.y, p1.z), (p2.x, p2.y, p2.z))
+                if p1.z > 0 and p2.z <= 0: p2 = pi
+                if p1.z <= 0 and p2.z > 0: p1 = pi
             
             pygame.draw.line(
                 display,
