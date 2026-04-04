@@ -1,4 +1,4 @@
-import pygame, math, numpy
+import pygame, math
 
 
 LINE_WIDTH = 3
@@ -10,41 +10,6 @@ def to_dict(x, y, z):
         "y": y,
         "z": z
     }
-
-
-def point(p, col):
-    # draws point on the screen
-    r = 5
-    surface = pygame.Surface((r*2, r*2), pygame.SRCALPHA)
-    pygame.draw.circle(surface, col, (r, r), r)
-    return (
-        surface,
-        (
-            p["x"] - r,
-            p["y"] - r
-        )
-    )
-
-
-def line(p1, p2, col):
-    # draws line from p1 to p2
-    w = 3
-    surface = pygame.Surface((abs(p2["x"] - p1["x"]) + w, abs(p2["y"] - p1["y"]) + w), pygame.SRCALPHA)
-    
-    x1 = surface.get_width() if p1["x"] > p2["x"] else 0
-    y1 = surface.get_height() if p1["y"] > p2["y"] else 0
-    x2 = surface.get_width() if p2["x"] > p1["x"] else 0
-    y2 = surface.get_height() if p2["y"] > p1["y"] else 0
-    
-    pygame.draw.line(surface, col, (x1, y1), (x2, y2), w)
-    
-    return (
-        surface,
-        (
-            min(p1["x"], p2["x"]),
-            min(p1["y"], p2["y"])
-        )
-    )
 
 
 def screen(p, sw, sh):
@@ -75,25 +40,35 @@ def get_intersection(p1, p2):
     }
 
 
-def rotate(v, rotation):
+def rotate(v: dict, rotation: pygame.Vector3):
     # y-axis rotation
-    v2 = {
-        "x": v["x"]*math.cos(rotation["y"]) - v["z"]*math.sin(rotation["y"]),
-        "y": v["y"],
-        "z": v["x"]*math.sin(rotation["y"]) + v["z"]*math.cos(rotation["y"]),
-    }
+    v2 = (
+        v["x"]*math.cos(rotation.y) - v["z"]*math.sin(rotation.y),
+        v["y"],
+        v["x"]*math.sin(rotation.y) + v["z"]*math.cos(rotation.y),
+    )
 
     # x-axis rotation
-    v3 = {
-        "x": v2["x"],
-        "y": v2["y"]*math.cos(rotation["x"]) - v2["z"]*math.sin(rotation["x"]),
-        "z": v2["y"]*math.sin(rotation["x"]) + v2["z"]*math.cos(rotation["x"]),
+    return {
+        "x": v2[0],
+        "y": v2[1]*math.cos(rotation.x) - v2[2]*math.sin(rotation.x),
+        "z": v2[1]*math.sin(rotation.x) + v2[2]*math.cos(rotation.x),
     }
 
-    return v3
+
+def translate(v: dict, translation: pygame.Vector3, rotation: pygame.Vector3):
+    return rotate(
+        {
+            "x": v["x"] + translation.x,
+            "y": v["y"] + translation.y,
+            "z": v["z"] + translation.z
+        },
+        rotation
+    )
 
 
-def render(display_size: tuple, objs: list, col, rotation: dict):
+
+def render(display_size: tuple, objs: list, col, rotation: dict, position):
     """
     obj: {
         "x": x,
@@ -108,6 +83,7 @@ def render(display_size: tuple, objs: list, col, rotation: dict):
     display = pygame.Surface(display_size)
     sw, sh = display_size[0], display_size[1]
 
+    # create vertices and faces
     vs = []   # vertices
     fs = []   # faces
     for i, obj in enumerate(objs):
@@ -136,9 +112,11 @@ def render(display_size: tuple, objs: list, col, rotation: dict):
             [j+3, j+7],
         ])
 
+    # rotate all vertices
     for i, v in enumerate(vs):
-        vs[i] = rotate(v, rotation)
+        vs[i] = translate(v, position, rotation)
     
+    # draw faces
     for f in fs:
         for i in range(0, len(f), 1):
             p1 = vs[f[i]]
