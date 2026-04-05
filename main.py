@@ -22,7 +22,7 @@ fps_surface = font.render(fps, True, "white")
 
 stone_tex = pygame.image.load('textures/stone.png').convert()
 grass_tex = pygame.image.load('textures/grass.png').convert()
-dirt_text = pygame.image.load('textures/dirt.png').convert()
+dirt_tex = pygame.image.load('textures/dirt.png').convert()
 oak_log_top_tex = pygame.image.load('textures/oak_log_top.png').convert()
 oak_log_side_tex = pygame.image.load('textures/oak_log_side.png').convert()
 
@@ -30,6 +30,11 @@ objs = [
     Object(0, 0, 4, 1, 1, 1, [stone_tex]),
     Object(1, 1, 4, 1, 1, 1, [oak_log_side_tex, oak_log_top_tex], [0,0,0,0,1,1]),
     Object(0, 1, 4, 1, 1, 1, [oak_log_side_tex, oak_log_top_tex], [0,0,0,0,1,1]),
+    Object(-1, 0, 4, 1, 1, 1, [stone_tex]),
+    Object(-1, 1, 4, 1, 1, 1, [dirt_tex]),
+    Object(-1, 2, 4, 1, 1, 1, [stone_tex]),
+    Object(-1, 3, 4, 1, 1, 1),
+    Object(-1, 4, 4, 1, 1, 1, [stone_tex]),
 ]
 
 if SHOW_FLOOR:
@@ -125,7 +130,7 @@ while running:
 
 
     pygame.display.flip()
-    dt = clock.tick(144) / 1000
+    dt = clock.tick(60) / 1000
     fps = str(math.floor(1/dt))
 
 

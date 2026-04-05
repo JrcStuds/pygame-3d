@@ -60,86 +60,62 @@ def cull(to_cull: list, fs: list):
 
 
 def cull_faces(fs: list, vs:list, position: pygame.Vector3, rotation: pygame.Vector3):
-    rot = pygame.Vector3(
-        -1 if rotation.y > math.pi else 1,
-        -1 if rotation.x > 0 else 1,
-        -1 if rotation.y > 0.5*math.pi and rotation.y < 1.5*math.pi else 1
-    )
     to_cull = []
+    seen_faces = {}
 
-    # cull touching faces
-    for i, f1 in enumerate(fs):
-        for j, f2 in enumerate(fs):
-            if f1["centre"] == f2["centre"] and i != j:
-                to_cull.append(i)
-    to_cull = cull(to_cull, fs)
-
-    # cull faces facing away from camera
     for i, f in enumerate(fs):
-        a = vs[f["pixel_fs"][15]["vs"][1]]
-        b = vs[f["pixel_fs"][0]["vs"][0]]
-        c = vs[f["pixel_fs"][255]["vs"][3]]
-        ab = b - a
-        ac = c - a
-        n = ab.cross(ac)
-        n.normalize_ip()
-        if n.z > 0:
+        # cull faces facing away from camera
+        a = vs[f[15]["vs"][1]]
+        b = vs[f[0]["vs"][0]]
+        c = vs[f[255]["vs"][3]]
+        n = (b - a).cross(c - a)
+        if n.dot(a) > 0:
             to_cull.append(i)
-    to_cull = cull(to_cull, fs)
+
+        # cull touching faces
+        """
+        centre = vs[f[127]["vs"][2]]
+        key = (centre.x, centre.y, centre.z)
+        if key in seen_faces.keys():
+            to_cull.append(i)
+            to_cull.append(seen_faces[key])
+        else:
+            seen_faces[key] = i
+        """
+
+    to_cull = list(set(to_cull))
+    cull(to_cull, fs)
 
     return fs
 
 
 
 def render(display_size: tuple, objs: list, col, rotation: dict, position):
-    """
-    Object: {
-        pos: pygame.Vector3(x, y, z),
-        size: pygame.Vector3(w, h, l)
-    }
-    """
-    
     display = pygame.Surface(display_size)
     sw, sh = display_size[0], display_size[1]
 
-    # create vertices and faces
     vs = []   # vertices
     fs = []   # faces
+
     for i, obj in enumerate(objs):
-        if obj.type == "wireframe":
-            for v in obj.vs:
-                vs.append(pygame.Vector3(
-                    v.x,
-                    v.y * -1,
-                    v.z
-                ))
-            
-            for f in obj.fs:
-                fs.append([])
-                for v in f:
-                    fs[-1].append(v + i*8)
+        for v in obj.vs:
+            vs.append(pygame.Vector3(
+                v.x,
+                v.y * -1,
+                v.z
+            ))
 
-        if obj.type == "textured":
-            for v in obj.vs:
-                vs.append(pygame.Vector3(
-                    v.x,
-                    v.y * -1,
-                    v.z
-                ))
-
-            for f in obj.fs:   # 256 pixel_vs per f
-                fs.append({
-                    "orientation": f["orientation"],
-                    "centre": transform([f["centre"]], position, rotation)[0],
-                    "pixel_fs": [
-                        {
-                            "vs": [
-                                v + i*6*17*17 for v in pixel_f["vs"]
-                            ],
-                            "col": pixel_f["col"]
-                        } for pixel_f in f["pixel_fs"]
-                    ]
-                })
+        index_offset = i*6*17*17
+        fs.extend([
+            [
+                {
+                    "vs": [
+                        index_offset + v for v in pixel_f["vs"]
+                    ],
+                    "col": pixel_f["col"]
+                } for pixel_f in f
+            ] for f in obj.fs
+        ])
 
     # rotate all vertices
     vs = transform(vs, position, rotation)
@@ -149,46 +125,35 @@ def render(display_size: tuple, objs: list, col, rotation: dict, position):
     # sort pixel distances
     fs2 = []
     for f in fs:
-        for pixel_f in f["pixel_fs"]:
-            v_indices = pixel_f["vs"]
-            avg_z = sum(vs[v].z for v in v_indices) / len(v_indices)
+        for pixel_f in f:
+            pixel_vs = pixel_f["vs"]
+            avg_z = sum(vs[v].z for v in pixel_vs) / len(pixel_vs)
             if avg_z > 0.1:
                 fs2.append({
-                    "vs": v_indices[:],
+                    "vs": pixel_vs,
                     "col": pixel_f["col"],
                     "depth": avg_z
                 })
-    
     fs2.sort(key=lambda f: f["depth"], reverse=True)
     
 
-    # draw faces
-    for j, f in enumerate(fs):
-        if type(f) == list:
-            for i in range(len(f)):
-                p1 = vs[f[i]]
-                p2 = vs[f[(i+1)%len(f)]]
-
-                if p1.z <= 0 and p2.z <= 0:
-                    continue
-                
-                if p1.z <= 0 or p2.z <= 0:
-                    pi = get_intersection((p1.x, p1.y, p1.z), (p2.x, p2.y, p2.z))
-                    if p1.z > 0 and p2.z <= 0: p2 = pi
-                    if p1.z <= 0 and p2.z > 0: p1 = pi
-                
-                pygame.draw.line(
-                    display,
-                    col, 
-                    screen(project(p1), sw, sh),
-                    screen(project(p2), sw, sh),
-                    LINE_WIDTH
-                )
-
-        elif type(f) == dict:
-            for f in fs2:
-                vs2 = []
-                for v in f["vs"]:
-                    vs2.append(screen(project(vs[v]), sw, sh))
-                pygame.draw.polygon(display, f["col"], vs2)
+    # draw faces / pixels
+    for f in fs2:
+        vs2 = []
+        for v in f["vs"]:
+            vs2.append(screen(project(vs[v]), sw, sh))
+        pygame.draw.polygon(display, f["col"], vs2)
+            
     return display
+
+
+
+"""
+
+Object: {
+    pos: pygame.Vector3(x, y, z),
+    size: pygame.Vector3(w, h, l),
+
+}
+
+"""

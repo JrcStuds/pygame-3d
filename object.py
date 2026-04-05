@@ -3,24 +3,22 @@ import pygame
 
 """
     Object.fs = [
-        {
-            "orientation": pygame.Vector3(),
-            "centre": pygame.Vector3(),
-            "pixel_fs": [
-                {"vs": [v0, v1, v2, v3], "col": str},
-                ...
-            ]
-        },
-        ...
+        [
+            {
+                "vs": [...],
+                "col": "..."
+            },
+            ....   (pixel fs)
+        ],
+        ....   (cube fs)
     ]
 """
 
 
 class Object():
-    def __init__(self, x, y, z, w, h, l, textures=[], texture_mapping=[0,0,0,0,0,0]):
+    def __init__(self, x, y, z, w, h, l, textures=[pygame.image.load('textures/none.png')], texture_mapping=[0,0,0,0,0,0]):
         self.pos = pygame.Vector3(x, y, z)
         self.size = pygame.Vector3(w, h, l)
-        self.type = "textured" if textures else "wireframe"
 
         self.vs = [
             pygame.Vector3(x-w/2, y+h/2, z+l/2),
@@ -41,7 +39,7 @@ class Object():
             [[7, 6, 2, 3], pygame.Vector3( 0, -1,  0)]    # -y
         ]
 
-        if self.type == "textured": self.create_texture(textures, texture_mapping)
+        self.create_texture(textures, texture_mapping)
 
 
     
@@ -50,7 +48,6 @@ class Object():
 
         for i, f in enumerate(self.fs):
             origin = self.vs[f[0][0]]   # position vectors
-            centre = (self.vs[f[0][0]] + self.vs[f[0][2]]) / 2
             unit_right = (self.vs[f[0][1]] - self.vs[f[0][0]]) / 16   # movement vectors
             unit_down = (self.vs[f[0][2]] - self.vs[f[0][1]]) / 16
 
@@ -73,18 +70,14 @@ class Object():
                     pixel_fs.append({
                         "vs": [
                             (j*17 + k) + i*17*17,
-                            (j*17 + k+1) + i*17*17,
-                            ((j+1)*17 + k+1) + i*17*17,
-                            ((j+1)*17 + k) + i*17*17,
+                            (j*17 + k) + i*17*17 + 1,
+                            (j*17 + k) + i*17*17 + 18,
+                            (j*17 + k) + i*17*17 + 17,
                         ],
                         "col": col
                     })
             
-            fs2.append({
-                "orientation": f[1],
-                "centre": centre,
-                "pixel_fs": pixel_fs
-            })
+            fs2.append(pixel_fs)
 
         self.vs = vs2
         self.fs = fs2
